@@ -25,7 +25,7 @@ from wtforms import (
     Form, PasswordField, StringField)
 from wtforms.validators import InputRequired
 
-from ldap3 import Server, Connection, Tls, LEVEL, SUBTREE, BASE
+from ldap3 import Server, Connection, Tls, LEVEL, SUBTREE, BASE, ALL_ATTRIBUTES
 import ssl
 
 from flask import url_for, redirect
@@ -127,6 +127,7 @@ class LdapUser(models.User):
     def __init__(self, user):
         self.user = user
         self.ldap_groups = []
+        self.similar_users = []
 
         # Load and cache superuser and data_profiler settings.
         conn = get_ldap_connection(configuration.conf.get("ldap", "bind_user"),
@@ -140,7 +141,7 @@ class LdapUser(models.User):
             pass
 
         if not superuser_filter:
-            self.superuser = True
+            self.superuser = False
             log.debug("Missing configuration for superuser settings or empty. Skipping.")
         else:
             self.superuser = group_contains_user(conn,
@@ -156,7 +157,7 @@ class LdapUser(models.User):
             pass
 
         if not data_profiler_filter:
-            self.data_profiler = True
+            self.data_profiler = False
             log.debug("Missing configuration for data profiler settings or empty. "
                       "Skipping.")
         else:
@@ -180,6 +181,10 @@ class LdapUser(models.User):
             )
         except AirflowConfigException:
             log.debug("Missing configuration for ldap settings. Skipping")
+
+
+        self.similar_users = self.get_similar_users(conn)
+        log.info("Similar user are :{}".format(self.similar_users))
 
     @staticmethod
     def try_login(username, password):
@@ -259,6 +264,26 @@ class LdapUser(models.User):
     def is_superuser(self):
         """Access all the things"""
         return self.superuser
+
+    def get_similar_users(self, conn):
+        """ Provides all similar user including current user. """
+
+        basedn_group = configuration.conf.get("ldap", "basedn_group")
+        group_filter = configuration.conf.get("ldap", "group_filter")
+        group_name_attr = configuration.conf.get("ldap", "group_name_attr")
+
+        search_base  = basedn_group
+        search_filter = "(&({0}{1},{2}))".format(group_filter,
+                                                 self.user.username,
+                                                 group_name_attr)
+
+        conn.search(search_base, search_filter, attributes=ALL_ATTRIBUTES)
+
+        json_data = conn.response_to_json()
+
+        users = set(re.findall("(?<=uid=)[a-z0-9_.-]*", json_data))
+
+        return list(users)
 
 
 @login_manager.user_loader
