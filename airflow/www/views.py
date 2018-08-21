@@ -1950,7 +1950,9 @@ class HomeView(AdminIndexView):
             sql_query = sql_query.filter(
                 ~DM.is_subdag,
                 DM.is_active,
-                DM.owners.in_(current_user.ldap_groups)
+                # This was commented out and changed to use vdm custom group filtering
+                #DM.owners.in_(current_user.ldap_groups)
+                DM.owners.in_(current_user.similar_users)
             )
         elif do_filter and owner_mode == 'user':
             sql_query = sql_query.filter(
@@ -1992,7 +1994,9 @@ class HomeView(AdminIndexView):
             webserver_dags = {
                 dag.dag_id: dag
                 for dag in unfiltered_webserver_dags
-                if dag.owner in current_user.ldap_groups
+                # This was commented out and changed to use vdm custom group filtering
+                #if dag.owner in current_user.ldap_groups
+                if dag.owner in current_user.similar_users
             }
         elif do_filter and owner_mode == 'user':
             # only show dags owned by @current_user.user.username
