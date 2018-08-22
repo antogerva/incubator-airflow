@@ -271,8 +271,9 @@ class LdapUser(models.User):
         search_base = configuration.conf.get("ldap", "basedn_group")
         group_filter = configuration.conf.get("ldap", "group_filter")
         group_name_attr = configuration.conf.get("ldap", "group_name_attr")
+        superuser_filter = configuration.conf.get("ldap", "superuser_filter")
 
-        super_user_filter = "(&({0}))".format(group_filter, '*')
+        super_user_filter = "(&({0}))".format(superuser_filter)
         group_user_filter = "(&({0}{1},{2}))".format(group_filter,
                                                       self.user.username,
                                                       group_name_attr)
