@@ -288,8 +288,8 @@ class LdapUser(models.User):
                 json_data = conn.response_to_json()
                 users = list(set(re.findall("(?<=uid=)[a-z0-9_.-]*", json_data)))
 
-        if user is None:
-            conn.search(search_base, search_filter, attributes=ALL_ATTRIBUTES)
+        if users is None:
+            conn.search(search_base, group_user_filter, attributes=ALL_ATTRIBUTES)
             json_data = conn.response_to_json()
             users = list(set(re.findall("(?<=uid=)[a-z0-9_.-]*", json_data)))
 
