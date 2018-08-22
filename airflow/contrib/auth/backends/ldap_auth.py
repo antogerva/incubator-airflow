@@ -133,55 +133,54 @@ class LdapUser(models.User):
         conn = get_ldap_connection(configuration.conf.get("ldap", "bind_user"),
                                    configuration.conf.get("ldap", "bind_password"))
 
-        superuser_filter = None
-        data_profiler_filter = None
-        try:
-            superuser_filter = configuration.conf.get("ldap", "superuser_filter")
-        except AirflowConfigException:
-            pass
+        # superuser_filter = None
+        # data_profiler_filter = None
+        # try:
+        #     superuser_filter = configuration.conf.get("ldap", "superuser_filter")
+        # except AirflowConfigException:
+        #     pass
 
-        if not superuser_filter:
-            self.superuser = False
-            log.debug("Missing configuration for superuser settings or empty. Skipping.")
-        else:
-            self.superuser = group_contains_user(conn,
-                                                 configuration.conf.get("ldap", "basedn"),
-                                                 superuser_filter,
-                                                 configuration.conf.get("ldap",
-                                                                        "user_name_attr"),
-                                                 user.username)
+        # if not superuser_filter:
+        #     self.superuser = False
+        #     log.debug("Missing configuration for superuser settings or empty. Skipping.")
+        # else:
+        #     self.superuser = group_contains_user(conn,
+        #                                          configuration.conf.get("ldap", "basedn"),
+        #                                          superuser_filter,
+        #                                          configuration.conf.get("ldap",
+        #                                                                 "user_name_attr"),
+        #                                          user.username)
 
-        try:
-            data_profiler_filter = configuration.conf.get("ldap", "data_profiler_filter")
-        except AirflowConfigException:
-            pass
+        # try:
+        #     data_profiler_filter = configuration.conf.get("ldap", "data_profiler_filter")
+        # except AirflowConfigException:
+        #     pass
 
-        if not data_profiler_filter:
-            self.data_profiler = False
-            log.debug("Missing configuration for data profiler settings or empty. "
-                      "Skipping.")
-        else:
-            self.data_profiler = group_contains_user(
-                conn,
-                configuration.conf.get("ldap", "basedn"),
-                data_profiler_filter,
-                configuration.conf.get("ldap",
-                                       "user_name_attr"),
-                user.username
-            )
+        # if not data_profiler_filter:
+        #     self.data_profiler = False
+        #     log.debug("Missing configuration for data profiler settings or empty. "
+        #               "Skipping.")
+        # else:
+        #     self.data_profiler = group_contains_user(
+        #         conn,
+        #         configuration.conf.get("ldap", "basedn"),
+        #         data_profiler_filter,
+        #         configuration.conf.get("ldap",
+        #                                "user_name_attr"),
+        #         user.username
+        #     )
 
-        # Load the ldap group(s) a user belongs to
-        try:
-            self.ldap_groups = groups_user(
-                conn,
-                configuration.conf.get("ldap", "basedn"),
-                configuration.conf.get("ldap", "user_filter"),
-                configuration.conf.get("ldap", "user_name_attr"),
-                user.username
-            )
-        except AirflowConfigException:
-            log.debug("Missing configuration for ldap settings. Skipping")
-
+        # # Load the ldap group(s) a user belongs to
+        # try:
+        #     self.ldap_groups = groups_user(
+        #         conn,
+        #         configuration.conf.get("ldap", "basedn"),
+        #         configuration.conf.get("ldap", "user_filter"),
+        #         configuration.conf.get("ldap", "user_name_attr"),
+        #         user.username
+        #     )
+        # except AirflowConfigException:
+        #     log.debug("Missing configuration for ldap settings. Skipping")
 
         self.similar_users = self.get_similar_users(conn)
         log.info("Similar user are :{}".format(self.similar_users))
@@ -268,23 +267,33 @@ class LdapUser(models.User):
     def get_similar_users(self, conn):
         """ Provides all similar user including current user. """
 
-        basedn_group = configuration.conf.get("ldap", "basedn_group")
+        # Add try catch ??
+        search_base = configuration.conf.get("ldap", "basedn_group")
         group_filter = configuration.conf.get("ldap", "group_filter")
         group_name_attr = configuration.conf.get("ldap", "group_name_attr")
 
-        search_base  = basedn_group
-        search_filter = "(&({0}{1},{2}))".format(group_filter,
-                                                 self.user.username,
-                                                 group_name_attr)
+        super_user_filter = "(&({0}))".format(group_filter, '*')
+        group_user_filter = "(&({0}{1},{2}))".format(group_filter,
+                                                      self.user.username,
+                                                      group_name_attr)
 
-        conn.search(search_base, search_filter, attributes=ALL_ATTRIBUTES)
+        conn.search(search_base, super_user_filter, attributes=ALL_ATTRIBUTES)
+        entries = conn.entries
 
-        json_data = conn.response_to_json()
+        users = None
+        for entry in entries
+            if entry['cn'] == super_user_group:
+                self.superuser = True
+                self.data_profiler = True
+                json_data = conn.response_to_json()
+                users = list(set(re.findall("(?<=uid=)[a-z0-9_.-]*", json_data)))
 
-        users = set(re.findall("(?<=uid=)[a-z0-9_.-]*", json_data))
+        if user is None:
+            conn.search(search_base, search_filter, attributes=ALL_ATTRIBUTES)
+            json_data = conn.response_to_json()
+            users = list(set(re.findall("(?<=uid=)[a-z0-9_.-]*", json_data)))
 
-        return list(users)
-
+        return user
 
 @login_manager.user_loader
 @provide_session
