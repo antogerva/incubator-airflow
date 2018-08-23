@@ -279,13 +279,14 @@ class LdapUser(models.User):
                                                      group_name_attr)
 
         users = None
-        conn.search(search_base, super_user_filter, attributes=ALL_ATTRIBUTES)
+        conn.search(search_base, group_user_filter, attributes=ALL_ATTRIBUTES)
         entries = conn.entries
 
         for entry in entries:
             if entry['cn'] == superuser_group:
                 self.superuser = True
                 self.data_profiler = True
+                conn.search(search_base, super_user_filter, attributes=ALL_ATTRIBUTES)
                 json_data = conn.response_to_json()
                 users = list(set(re.findall("(?<=uid=)[a-z0-9_.-]*", json_data)))
 
