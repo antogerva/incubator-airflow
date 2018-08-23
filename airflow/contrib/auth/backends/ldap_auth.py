@@ -282,7 +282,7 @@ class LdapUser(models.User):
         entries = conn.entries
 
         users = None
-        for entry in entries
+        for entry in entries:
             if entry['cn'] == super_user_group:
                 self.superuser = True
                 self.data_profiler = True
