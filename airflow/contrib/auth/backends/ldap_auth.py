@@ -272,18 +272,19 @@ class LdapUser(models.User):
         group_filter = configuration.conf.get("ldap", "group_filter")
         group_name_attr = configuration.conf.get("ldap", "group_name_attr")
         superuser_filter = configuration.conf.get("ldap", "superuser_filter")
+        superuser_group = configuration.conf.get("ldap", "superuser_group")
 
         super_user_filter = "(&({0}))".format(superuser_filter)
         group_user_filter = "(&({0}{1},{2}))".format(group_filter,
-                                                      self.user.username,
-                                                      group_name_attr)
+                                                     self.user.username,
+                                                     group_name_attr)
 
         conn.search(search_base, super_user_filter, attributes=ALL_ATTRIBUTES)
         entries = conn.entries
 
         users = None
         for entry in entries:
-            if entry['cn'] == super_user_group:
+            if entry['cn'] == superuser_group:
                 self.superuser = True
                 self.data_profiler = True
                 json_data = conn.response_to_json()
