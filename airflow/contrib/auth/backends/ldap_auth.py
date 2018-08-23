@@ -281,18 +281,16 @@ class LdapUser(models.User):
         users = None
         conn.search(search_base, group_user_filter, attributes=ALL_ATTRIBUTES)
         entries = conn.entries
-        log.info('entries:{}'.format(entries))
 
         for entry in entries:
             if entry['cn'] == superuser_group:
-                log.info('User is member of super user group:{}'.format(superuser_group))
+                log.info('User is member of superuser group:{}'.format(superuser_group))
                 self.superuser = True
                 self.data_profiler = True
                 log.info('Search for all DAGs owners')
                 conn.search(search_base, super_user_filter, attributes=ALL_ATTRIBUTES)
                 json_data = conn.response_to_json()
                 users = list(set(re.findall("(?<=uid=)[a-z0-9_.-]*", json_data)))
-                log.info('DAGs user list:{}'.format(users))
 
         if users is None:
             log.info('User is a regular user')
@@ -301,7 +299,8 @@ class LdapUser(models.User):
             conn.search(search_base, group_user_filter, attributes=ALL_ATTRIBUTES)
             json_data = conn.response_to_json()
             users = list(set(re.findall("(?<=uid=)[a-z0-9_.-]*", json_data)))
-            log.info('Similar user:{}'.format(users))
+
+        log.info('Similar users:{}'.format(users))
 
         return users
 
