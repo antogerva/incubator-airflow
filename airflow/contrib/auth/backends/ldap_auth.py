@@ -267,7 +267,6 @@ class LdapUser(models.User):
     def get_similar_users(self, conn):
         """ Provides all similar user including current user. """
 
-        # Add try catch ??
         search_base = configuration.conf.get("ldap", "basedn_group")
         group_filter = configuration.conf.get("ldap", "group_filter")
         group_name_attr = configuration.conf.get("ldap", "group_name_attr")
@@ -279,10 +278,10 @@ class LdapUser(models.User):
                                                      self.user.username,
                                                      group_name_attr)
 
+        users = None
         conn.search(search_base, super_user_filter, attributes=ALL_ATTRIBUTES)
         entries = conn.entries
 
-        users = None
         for entry in entries:
             if entry['cn'] == superuser_group:
                 self.superuser = True
@@ -295,7 +294,7 @@ class LdapUser(models.User):
             json_data = conn.response_to_json()
             users = list(set(re.findall("(?<=uid=)[a-z0-9_.-]*", json_data)))
 
-        return user
+        return users
 
 @login_manager.user_loader
 @provide_session
