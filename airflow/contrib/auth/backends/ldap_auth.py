@@ -296,6 +296,8 @@ class LdapUser(models.User):
 
         if users is None:
             log.info('User is a regular user')
+            self.superuser = False
+            self.data_profiler = False
             conn.search(search_base, group_user_filter, attributes=ALL_ATTRIBUTES)
             json_data = conn.response_to_json()
             users = list(set(re.findall("(?<=uid=)[a-z0-9_.-]*", json_data)))
