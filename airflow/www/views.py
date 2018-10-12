@@ -2120,6 +2120,12 @@ class HomeView(AdminIndexView):
                 ~DM.is_subdag, DM.is_active,
                 DM.owners == current_user.user.username
             )
+        elif do_filter and owner_mode =='custom-ldapgroup':
+            sql_query = sql_query.filter(
+                ~DM.is_subdag,
+                DM.is_active,
+                DM.owners.in_(current_user.ldap_custom_groups)
+            )
         else:
             sql_query = sql_query.filter(
                 ~DM.is_subdag, DM.is_active
@@ -2163,6 +2169,12 @@ class HomeView(AdminIndexView):
                 dag.dag_id: dag
                 for dag in unfiltered_webserver_dags
                 if dag.owner == current_user.user.username
+            }
+        elif do_filter and owner_mode == 'custom-ldapgroup':
+            webserver_dags = {
+                dag.dag_id: dag
+                for dag in unfiltered_webserver_dags
+                if dag.owner in current_user.ldap_custom_groups
             }
         else:
             webserver_dags = {
