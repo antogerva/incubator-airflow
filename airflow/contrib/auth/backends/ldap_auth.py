@@ -24,7 +24,7 @@ from flask import flash
 from wtforms import Form, PasswordField, StringField
 from wtforms.validators import InputRequired
 
-from ldap3 import Server, Connection, Tls, LEVEL, SUBTREE
+from ldap3 import Server, Connection, Tls, LEVEL, SUBTREE, ALL_ATTRIBUTES
 import ssl
 
 from flask import url_for, redirect
