@@ -114,16 +114,10 @@ class PythonOperatorTest(unittest.TestCase):
                 task_id='python_operator',
                 dag=self.dag)
 
-    def _assertCallsEqual(self, first, second):
-        self.assertIsInstance(first, Call)
-        self.assertIsInstance(second, Call)
-        self.assertTupleEqual(first.args, second.args)
-        self.assertDictEqual(first.kwargs, second.kwargs)
-
     def test_python_callable_arguments_are_templatized(self):
         """Test PythonOperator op_args are templatized"""
 
-        callable_mock = mock.Mock(recorded_calls)
+        callable_mock = mock.Mock()
         
         task = PythonOperator(
             task_id='python_operator',
@@ -151,7 +145,8 @@ class PythonOperatorTest(unittest.TestCase):
 
     def test_python_callable_keyword_arguments_are_templatized(self):
         """Test PythonOperator op_kwargs are templatized"""
-        callable_mock = mock.Mock(recorded_calls)
+
+        callable_mock = mock.Mock()
 
         task = PythonOperator(
             task_id='python_operator',
