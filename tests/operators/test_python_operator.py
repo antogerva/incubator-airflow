@@ -46,6 +46,7 @@ TI_CONTEXT_ENV_VARS = ['AIRFLOW_CTX_DAG_ID',
                        'AIRFLOW_CTX_EXECUTION_DATE',
                        'AIRFLOW_CTX_DAG_RUN_ID']
 
+
 class PythonOperatorTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -118,7 +119,7 @@ class PythonOperatorTest(unittest.TestCase):
         """Test PythonOperator op_args are templatized"""
 
         callable_mock = mock.Mock()
-        
+
         task = PythonOperator(
             task_id='python_operator',
             python_callable=callable_mock,
@@ -170,7 +171,7 @@ class PythonOperatorTest(unittest.TestCase):
             an_int=4,
             a_date=date(2019, 1, 1),
             a_templated_string="dag {} ran on {}.".format(
-                 self.dag.dag_id, DEFAULT_DATE.date().isoformat())
+                self.dag.dag_id, DEFAULT_DATE.date().isoformat())
         )
 
     def test_python_operator_shallow_copy_attr(self):
