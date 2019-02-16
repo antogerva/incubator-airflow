@@ -24,7 +24,14 @@ import logging
 import os
 import unittest
 from datetime import timedelta, date
-from unittest import mock
+
+try:
+    from unittest import mock
+except ImportError:
+    try:
+        import mock
+    except ImportError:
+        mock = None
 
 from airflow import configuration
 from airflow.exceptions import AirflowException
