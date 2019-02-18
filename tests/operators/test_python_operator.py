@@ -23,7 +23,7 @@ import copy
 import logging
 import os
 import unittest
-from datetime import timedelta
+from datetime import timedelta, date
 
 from airflow import configuration
 from airflow.exceptions import AirflowException
@@ -44,6 +44,24 @@ TI_CONTEXT_ENV_VARS = ['AIRFLOW_CTX_DAG_ID',
                        'AIRFLOW_CTX_TASK_ID',
                        'AIRFLOW_CTX_EXECUTION_DATE',
                        'AIRFLOW_CTX_DAG_RUN_ID']
+
+
+class Call:
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+
+def build_recording_function(calls_collection):
+    """
+    We can not use a Mock instance as a PythonOperator callable function or some tests fail with a
+    TypeError: Object of type Mock is not JSON serializable
+    Then using this custom function recording custom Call objects for further testing
+    (replacing Mock.assert_called_with assertion method)
+    """
+    def recording_function(*args, **kwargs):
+        calls_collection.append(Call(*args, **kwargs))
+    return recording_function
 
 
 class PythonOperatorTest(unittest.TestCase):
@@ -156,6 +174,187 @@ class PythonOperatorTest(unittest.TestCase):
                            python_callable=self._env_var_check_callback
                            )
         t.run(start_date=DEFAULT_DATE, end_date=DEFAULT_DATE)
+
+    def test_template_field_value_rendering(self):
+        """Test PythonOperator template field with a simple templated string"""
+        recorded_calls = []
+
+        task = PythonOperator(
+            task_id='python_operator',
+            python_callable=build_recording_function(recorded_calls),
+            provide_context=True,
+            templates_dict={
+                'a_templated_string': "dag {{dag.dag_id}} ran on {{ds}}."
+            },
+            dag=self.dag)
+
+        self.dag.create_dagrun(
+            run_id='manual__' + DEFAULT_DATE.isoformat(),
+            execution_date=DEFAULT_DATE,
+            start_date=DEFAULT_DATE,
+            state=State.RUNNING
+        )
+        task.run(start_date=DEFAULT_DATE, end_date=DEFAULT_DATE)
+
+        self.assertEqual(1, len(recorded_calls))
+        self.assertTrue('templates_dict' in recorded_calls[0].kwargs)
+        self.assertDictEqual(
+            recorded_calls[0].kwargs['templates_dict'],
+            {'a_templated_string': "dag {} ran on {}.".format(self.dag.dag_id, DEFAULT_DATE.date())}
+        )
+
+    def test_template_field_object_rendering(self):
+        """Test PythonOperator template field with a nested templated string attribute"""
+        recorded_calls = []
+
+        task = PythonOperator(
+            task_id='python_operator',
+            python_callable=build_recording_function(recorded_calls),
+            provide_context=True,
+            templates_dict={
+                'a_templated_object': ClassWithCustomAttributes(
+                    templated_string_attr="dag {{dag.dag_id}} ran on {{ds}}."
+                )
+            },
+            dag=self.dag)
+
+        self.dag.create_dagrun(
+            run_id='manual__' + DEFAULT_DATE.isoformat(),
+            execution_date=DEFAULT_DATE,
+            start_date=DEFAULT_DATE,
+            state=State.RUNNING
+        )
+        task.run(start_date=DEFAULT_DATE, end_date=DEFAULT_DATE)
+
+        self.assertEqual(1, len(recorded_calls))
+        self.assertTrue('templates_dict' in recorded_calls[0].kwargs)
+        self.assertDictEqual(
+            recorded_calls[0].kwargs['templates_dict'],
+            {
+                'a_templated_object': ClassWithCustomAttributes(
+                    templated_string_attr="dag {} ran on {}.".format(self.dag.dag_id, DEFAULT_DATE.date())
+                )
+            }
+        )
+
+    def test_multiple_template_fields_rendering(self):
+        """Test PythonOperator template field with multiple templated and non templated values"""
+        recorded_calls = []
+
+        task = PythonOperator(
+            task_id='python_operator',
+            python_callable=build_recording_function(recorded_calls),
+            provide_context=True,
+            templates_dict={
+                'an_int': 4,
+                'a_date': date(2019, 2, 18),
+                'a_string': "this is a static string",
+                'a_templated_string': "this is a templated string for dag {{dag.dag_id}}",
+                'an_object': ClassWithCustomAttributes(
+                    static_string_attr='static string',
+                    int_attr=5,
+                    date_attr=date(2019, 2, 19)
+                ),
+                'a_templated_object': ClassWithCustomAttributes(
+                    templated_string_attr="dag {{dag.dag_id}}",
+                    static_string_attr="static_string",
+                    int_attr=6,
+                    date_attr=date(2019, 2, 20)
+                )
+            },
+            dag=self.dag)
+
+        self.dag.create_dagrun(
+            run_id='manual__' + DEFAULT_DATE.isoformat(),
+            execution_date=DEFAULT_DATE,
+            start_date=DEFAULT_DATE,
+            state=State.RUNNING
+        )
+        task.run(start_date=DEFAULT_DATE, end_date=DEFAULT_DATE)
+
+        self.assertEqual(1, len(recorded_calls))
+        self.assertTrue('templates_dict' in recorded_calls[0].kwargs)
+        self.assertDictEqual(
+            recorded_calls[0].kwargs['templates_dict'],
+            {
+                'an_int': 4,
+                'a_date': date(2019, 2, 18),
+                'a_string': "this is a static string",
+                'a_templated_string': "this is a templated string for dag {}".format(self.dag.dag_id),
+                'an_object': ClassWithCustomAttributes(
+                    static_string_attr='static string',
+                    int_attr=5,
+                    date_attr=date(2019, 2, 19)
+                ),
+                'a_templated_object': ClassWithCustomAttributes(
+                    templated_string_attr="dag {}".format(self.dag.dag_id),
+                    static_string_attr="static_string",
+                    int_attr=6,
+                    date_attr=date(2019, 2, 20)
+                )
+            }
+        )
+
+    def test_template_rendering_on_circular_references(self):
+        """Test PythonOperator template field with objects having circular references"""
+        recorded_calls = []
+
+        object1 = ClassWithCustomAttributes(
+            templated_string_attr="object 1 on dag {{dag.dag_id}}"
+        )
+        object2 = ClassWithCustomAttributes(
+            templated_string_attr="object 2 on dag {{dag.dag_id}}",
+            ref=object1
+        )
+        setattr(object1, 'ref', object2)
+
+        task = PythonOperator(
+            task_id='python_operator',
+            python_callable=build_recording_function(recorded_calls),
+            provide_context=True,
+            templates_dict={
+                'an_object': object1,
+                'another_object': object2
+            },
+            dag=self.dag)
+
+        self.dag.create_dagrun(
+            run_id='manual__' + DEFAULT_DATE.isoformat(),
+            execution_date=DEFAULT_DATE,
+            start_date=DEFAULT_DATE,
+            state=State.RUNNING
+        )
+        task.run(start_date=DEFAULT_DATE, end_date=DEFAULT_DATE)
+
+        self.assertEqual(1, len(recorded_calls))
+        self.assertTrue('templates_dict' in recorded_calls[0].kwargs)
+
+        resolved_dict = recorded_calls[0].kwargs['templates_dict']
+
+        # template_dict is still referencing the same objects:
+        self.assertEqual(id(object1), id(resolved_dict['an_object']))
+        self.assertEqual(id(object2), id(resolved_dict['another_object']))
+        # templated nested attributes have been resolved on template objects:
+        self.assertEqual("object 1 on dag {}".format(self.dag.dag_id), object1.templated_string_attr)
+        self.assertEqual("object 2 on dag {}".format(self.dag.dag_id), object2.templated_string_attr)
+
+
+class ClassWithCustomAttributes:
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def __str__(self):
+        return "{}({})".format(ClassWithCustomAttributes.__name__, str(self.__dict__))
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class BranchOperatorTest(unittest.TestCase):

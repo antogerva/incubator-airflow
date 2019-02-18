@@ -2165,6 +2165,7 @@ class BaseOperator(LoggingMixin):
         # Private attributes
         self._upstream_task_ids = set()
         self._downstream_task_ids = set()
+        self._rendered_template_object_ids = set()
 
         if not dag and _CONTEXT_MANAGER_DAG:
             dag = _CONTEXT_MANAGER_DAG
@@ -2440,7 +2441,8 @@ class BaseOperator(LoggingMixin):
         Renders a template from a field. If the field is a string, it will
         simply render the string and return the result. If it is a collection or
         nested set of collections, it will traverse the structure and render
-        all elements in it. If the field has another type, it will return it as it is.
+        all elements in it. For any other type, it will render all its attributes
+        recursively (when having some) and return the field.
         """
         rt = self.render_template
         if isinstance(content, six.string_types):
@@ -2452,8 +2454,34 @@ class BaseOperator(LoggingMixin):
                 k: rt("{}[{}]".format(attr, k), v, context)
                 for k, v in list(content.items())}
         else:
-            result = content
+            result = self._render_template_object_recursively(content, context)
         return result
+
+    def _render_template_object_recursively(self, content, context):
+        if id(content) not in self._rendered_template_object_ids:
+            self._rendered_template_object_ids.add(id(content))
+            try:
+                content_attributes = vars(content)
+            except TypeError:
+                # content has no __dict__ (e.g.: could be an int)
+                return content
+
+            for attribute, value in content_attributes.items():
+                try:
+                    # Best effort approach here:
+                    # try to render attribute value as a template,
+                    # and try to set this attribute with the rendering result
+                    # It may fail sometimes
+                    # (e.g.: UUID has an int attribute but is immutable; see UUID.__settattr__ )
+                    # In case of failure, just let this attribute unchanged.
+                    setattr(content,
+                            attribute,
+                            self.render_template(attribute, value, context))
+                except Exception:
+                    self.log.info("Could not render and set attribute '{}' (with value '{}') "
+                                  "as a template on '{}' object."
+                                  .format(attribute, value, content))
+        return content
 
     def render_template(self, attr, content, context):
         """
