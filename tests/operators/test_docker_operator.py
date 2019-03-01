@@ -21,6 +21,7 @@
 import unittest
 import logging
 
+
 try:
     from airflow.operators.docker_operator import DockerOperator
     from airflow.hooks.docker_hook import DockerHook
