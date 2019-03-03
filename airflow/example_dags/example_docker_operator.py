@@ -16,9 +16,9 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-"""
+
 from airflow import DAG
-from airflow.operators import BashOperator
+from airflow.operators.bash_operator import BashOperator
 from datetime import datetime, timedelta
 from airflow.operators.docker_operator import DockerOperator
 
@@ -68,4 +68,3 @@ t4 = BashOperator(
 t1.set_downstream(t2)
 t1.set_downstream(t3)
 t3.set_downstream(t4)
-"""
