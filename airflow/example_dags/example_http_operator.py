@@ -18,7 +18,7 @@
 # under the License.
 """
 ### Example HTTP operator and sensor
-"""
+
 import json
 from datetime import timedelta
 
@@ -98,3 +98,4 @@ sensor = HttpSensor(
 )
 
 sensor >> t1 >> t2 >> t3 >> t4 >> t5
+"""
