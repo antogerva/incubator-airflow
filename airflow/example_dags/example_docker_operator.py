@@ -47,13 +47,14 @@ t2 = BashOperator(
     retries=3,
     dag=dag)
 
-t3 = DockerOperator(api_version='1.19',
-    docker_url='tcp://localhost:2375', #Set your docker URL
-    command='/bin/sleep 30',
-    image='centos:latest',
-    network_mode='bridge',
-    task_id='docker_op_tester',
-    dag=dag)
+
+# t3 = DockerOperator(api_version='1.19',
+#     docker_url='tcp://localhost:2375', #Set your docker URL
+#     command='/bin/sleep 30',
+#     image='centos:latest',
+#     network_mode='bridge',
+#     task_id='docker_op_tester',
+#     dag=dag)
 
 
 t4 = BashOperator(
