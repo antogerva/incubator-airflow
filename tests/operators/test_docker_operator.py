@@ -20,13 +20,6 @@
 import unittest
 
 try:
-    from airflow.operators.docker_operator import DockerOperator
-    from airflow.hooks.docker_hook import DockerHook
-    from docker import APIClient
-except ImportError:
-    pass
-
-try:
     from unittest import mock
 except ImportError:
     try:
