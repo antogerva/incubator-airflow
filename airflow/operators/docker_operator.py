@@ -40,7 +40,7 @@ class DockerOperator(BaseOperator):
 
     If a login to a private registry is required prior to pulling the image, a
     Docker connection needs to be configured in Airflow and the connection ID
-    be provided with the parameter ``docker_conn_id``.
+    be provided with a parameter ``docker_conn_id``.
 
     :param image: Docker image from which to create the container.
         If image tag is omitted, "latest" will be used.
